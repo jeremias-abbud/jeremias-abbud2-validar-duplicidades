@@ -52,6 +52,9 @@ interface DuplicateGroup {
     quantidade: string;
     conselho: string;
     data: string;
+    conselhoExecTipo: string;
+    conselhoExecNum: string;
+    conselhoExecUf: string;
   };
 }
 
@@ -63,6 +66,7 @@ interface FilterState {
   data: string;
   situacao: string;
   intervalCategory: string;
+  conselhoExecutante: string;
 }
 
 export default function App() {
@@ -79,7 +83,8 @@ export default function App() {
     procedimento: '',
     data: '',
     situacao: '',
-    intervalCategory: ''
+    intervalCategory: '',
+    conselhoExecutante: ''
   });
 
   const [uniqueValues, setUniqueValues] = useState<{
@@ -87,11 +92,13 @@ export default function App() {
     procedimentos: string[];
     situacoes: string[];
     datas: string[];
+    conselhoExecutantes: string[];
   }>({
     prestadores: [],
     procedimentos: [],
     situacoes: [],
     datas: [],
+    conselhoExecutantes: [],
   });
   
   const [activeTab, setActiveTab] = useState<'table' | 'dashboard'>('table');
@@ -299,7 +306,10 @@ export default function App() {
       'SITUACAO': ['SITUAÇÃO', 'SITUACAO', 'STATUS', 'RESULTADO', 'SIT'],
       'CONSELHO': ['Nº CONSELHO', 'NUMERO_CONSELHO', 'CONSELHO', 'CRM', 'NUMERO_', 'REGISTRO_CONSELHO', 'CONSELHO PROFISSIONAL'],
       'TIPO': ['TIPO_TRA', 'TIPO DE TRANSAÇÃO', 'TIPO', 'TIPO_TRANSACAO', 'TIPO DE TRANSACAO', 'TIPO DE SOLICITACAO', 'TIPO_SOLICITACAO'],
-      'ESPECIALIDADE': ['ESPECIALIDADE', 'ESPEC', 'AREA_MEDICA', 'NOME_ESPECIALIDADE', 'ESPECIALIDADE_PRESTADOR']
+      'ESPECIALIDADE': ['ESPECIALIDADE', 'ESPEC', 'AREA_MEDICA', 'NOME_ESPECIALIDADE', 'ESPECIALIDADE_PRESTADOR'],
+      'TIPO_CONSELHO_EXECUTANTE': ['TIPO_CONSELHO_EXECUTANTE', 'TIPO_CONSELHO_EXEC', 'CONSELHO_EXECUTANTE_TIPO', 'TIPO_CONSELHO', 'CONSELHO_TIPO'],
+      'NUMERO_CONSELHO_EXECUTANTE': ['NUMERO_CONSELHO_EXECUTANTE', 'NUM_CONSELHO_EXECUTANTE', 'NUMERO_CONSELHO_EXEC', 'CRM_EXECUTANTE', 'NUM_CONSELHO_EXEC'],
+      'UF_CONSELHO_EXECUTANTE': ['UF_CONSELHO_EXECUTANTE', 'UF_CONSELHO_EXEC', 'CONSELHO_EXECUTANTE_UF', 'UF_CRM_EXECUTANTE']
     };
 
     const targets = aliases[concept] || [concept];
@@ -439,6 +449,7 @@ export default function App() {
     const procedimentosSet = new Set<string>();
     const situacoesSet = new Set<string>();
     const datasSet = new Set<string>();
+    const conselhoExecSet = new Set<string>();
     
     const normalizeText = (v: any) => String(v ?? '').trim().toLowerCase();
     const normalizeRaw = (v: any) => String(v ?? '').trim();
@@ -490,6 +501,10 @@ export default function App() {
       const quantidade = normalizeNum(getColValue(row, 'QUANTIDADE'));
       const conselho = robustNormalize(getColValue(row, 'CONSELHO'));
       
+      const cExecTipo = robustNormalize(getColValue(row, 'TIPO_CONSELHO_EXECUTANTE'));
+      const cExecNum = robustNormalize(getColValue(row, 'NUMERO_CONSELHO_EXECUTANTE'));
+      const cExecUf = robustNormalize(getColValue(row, 'UF_CONSELHO_EXECUTANTE'));
+
       const params = [
         robustNormalize(prestadorNome),
         prestadorMatricula,
@@ -502,6 +517,9 @@ export default function App() {
         robustNormalize(tipo),
         quantidade,
         conselho,
+        cExecTipo,
+        cExecNum,
+        cExecUf,
       ];
 
       const fingerprint = params.join('|');
@@ -525,6 +543,12 @@ export default function App() {
         const procedimento = String(getColValue(first, 'PROCEDIMENTO') ?? '');
         const situacao = String(getColValue(first, 'SITUACAO') ?? '');
 
+        const cExecTipoVal = String(getColValue(first, 'TIPO_CONSELHO_EXECUTANTE') ?? '');
+        const cExecNumVal = String(getColValue(first, 'NUMERO_CONSELHO_EXECUTANTE') ?? '');
+        const cExecUfVal = String(getColValue(first, 'UF_CONSELHO_EXECUTANTE') ?? '');
+        const cExecStr = [cExecTipoVal, cExecNumVal, cExecUfVal].filter(Boolean).join(' ');
+        if (cExecStr) conselhoExecSet.add(cExecStr);
+
         if (prestador) prestadoresSet.add(prestador);
         if (procedimento) procedimentosSet.add(procedimento);
         if (situacao) situacoesSet.add(situacao);
@@ -544,7 +568,10 @@ export default function App() {
             tipo: String(getColValue(first, 'TIPO') ?? ''),
             quantidade: String(getColValue(first, 'QUANTIDADE') ?? ''),
             conselho: String(getColValue(first, 'CONSELHO') ?? ''),
-            data: date
+            data: date,
+            conselhoExecTipo: cExecTipoVal,
+            conselhoExecNum: cExecNumVal,
+            conselhoExecUf: cExecUfVal
           }
         };
       });
@@ -558,6 +585,7 @@ export default function App() {
         const [db, mb, yb] = b.split('/').map(Number);
         return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
       }),
+      conselhoExecutantes: Array.from(conselhoExecSet).sort(),
     });
 
     setDuplicateGroups(calculatedGroups);
@@ -574,10 +602,15 @@ export default function App() {
       const matchData = !filters.data || group.params.data.includes(filters.data);
       const matchSituacao = !filters.situacao || group.params.situacao.toLowerCase().includes(filters.situacao.toLowerCase());
       
+      const cExecFull = `${group.params.conselhoExecTipo} ${group.params.conselhoExecNum} ${group.params.conselhoExecUf}`.toLowerCase();
+      const matchConselhoExec = !filters.conselhoExecutante || 
+        cExecFull.includes(filters.conselhoExecutante.toLowerCase()) ||
+        group.params.conselhoExecNum.toLowerCase().includes(filters.conselhoExecutante.toLowerCase());
+
       const intervalInfo = getGroupTimeInterval(group.rows);
       const matchInterval = !filters.intervalCategory || intervalInfo.level === filters.intervalCategory;
 
-      return matchPrestador && matchBeneficiario && matchMatricula && matchProcedimento && matchData && matchSituacao && matchInterval;
+      return matchPrestador && matchBeneficiario && matchMatricula && matchProcedimento && matchData && matchSituacao && matchConselhoExec && matchInterval;
     });
   }, [duplicateGroups, filters]);
 
@@ -946,7 +979,7 @@ export default function App() {
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-8 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] uppercase text-gray-500 font-mono">Beneficiário</label>
                       <div className="relative">
@@ -981,6 +1014,19 @@ export default function App() {
                         <option value="">Todos</option>
                         {uniqueValues.prestadores.map(p => (
                           <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase text-gray-500 font-mono">CRM Executante</label>
+                      <select 
+                        value={filters.conselhoExecutante}
+                        onChange={e => setFilters(prev => ({ ...prev, conselhoExecutante: e.target.value }))}
+                        className="w-full bg-[#0A0B0D] border border-white/10 rounded px-4 py-2 text-xs focus:border-white/30 outline-none transition-all cursor-pointer"
+                      >
+                        <option value="">Todos</option>
+                        {uniqueValues.conselhoExecutantes.map(c => (
+                          <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
                     </div>
