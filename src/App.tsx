@@ -1138,9 +1138,16 @@ export default function App() {
                       <div className="col-span-2 px-4 border-r border-white/5">
                         <div className="flex flex-col gap-1 overflow-hidden">
                           <p className="text-xs text-gray-300 truncate uppercase" title={group.params.prestador}>{group.params.prestador}</p>
-                          <span className="text-[8px] text-blue-500/60 font-mono self-start bg-blue-500/5 px-1 rounded border border-blue-500/10" title="Matrícula Prestador">
-                            {group.params.prestador_matricula || '---'}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[8px] text-blue-500/60 font-mono self-start bg-blue-500/5 px-1 rounded border border-blue-500/10" title="Matrícula Prestador">
+                              {group.params.prestador_matricula || '---'}
+                            </span>
+                            {group.params.conselhoExecNum && (
+                              <span className="text-[8px] text-purple-400/80 font-mono self-start bg-purple-500/5 px-1 rounded border border-purple-500/10" title="CRM Executante">
+                                {group.params.conselhoExecTipo || 'CRM'} {group.params.conselhoExecNum}{group.params.conselhoExecUf ? `/${group.params.conselhoExecUf}` : ''}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="col-span-1 text-[9px] text-gray-400 text-center truncate italic px-1" title={group.params.especialidade}>
